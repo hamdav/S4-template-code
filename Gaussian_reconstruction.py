@@ -3,89 +3,111 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 
+plt.style.use("seaborn-darkgrid")
+
 # Invoke script like "python3 Gaussian_reconstruction.py data.txt"
 
-def calculateRsp(waist, r_sp, phis, lambdas, dphi, dtheta, ntheta):
-    # @returns the reflectivity spectrum for the lambdas
-    # Equation from https://doi.org/10.1364/OE.26.001895 (equation 6)
-    # It assumes that r_sp is a 1D array on the form
-    ##  theta=1     phi=1   lambda=1
-    ##  theta=1     phi=1   lambda=2
-    ##  theta=1     phi=1   lambda=3
-    ##  theta=1     phi=2   lambda=1
-    ##  theta=1     phi=2   lambda=2
-    ##  theta=1     phi=2   lambda=3
-    ##  theta=2     phi=1   lambda=1
-    ##  theta=2     phi=1   lambda=2
-    ##  theta=2     phi=1   lambda=3
-    ##  theta=2     phi=2   lambda=1
-    ##  ...
-    #
-    # It also assumes that phis are in degrees
-    # and lambdas and waist in meters 
 
-    # find the dimensions of the array (for resizing)
-    nphi = phis.size
-    nlambda = lambdas.size
+def calculateRsp(waist, data):
+    """
+    @returns the reflectivity spectrum for the lambdas
+    Equation from https://doi.org/10.1364/OE.26.001895 (equation 6)
+    data[:,0] should contain the lambdas, and
+    data[:,1] should contain the phis in radians,
+    data[:,2] should contain the thetas in radians,
+    data[:,3] should contain the reflectivities.
+    """
 
-    # Resize r_sp so that r_sp[1,2,5] yields r_sp of plane wave with 
-    # lambda = lambdas[1], phi = phis[2], thetas = thetas[5]
-    r_sp = np.transpose(np.resize(r_sp, (nphi*ntheta, nlambda)))
-    r_sp = np.resize(r_sp, (nlambda, ntheta, nphi))
+    # Abs square the reflectivities
+    data[:, 3] = np.abs(data[:, 3])**2
 
-    r_sp = np.abs(r_sp)**2
+    # Sort according to lambdas first, phis second, thetas third
+    data = data[np.argsort(data[:, 2], kind='mergesort')]
+    data = data[np.argsort(data[:, 1], kind='mergesort')]
+    data = data[np.argsort(data[:, 0], kind='mergesort')]
+
+    # Append a last column of ones
+    data = np.hstack((data, np.ones((len(data), 1))))
+
+    # Partition data according to lambdas first and phis second.
+    # I.e. data = [datawithlambda1, datawithlambda2, ...]
+    # datawithlambdax = [datawithphi1, datawithphi2, ...]
+    # datawithphix = [[lambda, phi, theta, r, 1],
+    #                  [lambda, phi, theta, r, 1],... ]
+    data = np.split(data, np.unique(data[:, 0], return_index=True)[1][1:])
+    data = np.array([np.split(datawithlambda, np.unique(datawithlambda[:, 1], return_index=True)[1][1:]) for datawithlambda in data])
 
     # Do the theta integral:
-    r_sp_notheta = np.sum(r_sp, axis=1) * dtheta
+    # data is then [datawithlambda1, datawithlambda2, ...]
+    # datawithlambdax = [[lambda, phi, r, 1], [lambda, phi, r, 1],... ]
+    data = np.array([[[datawithphi[0][0], datawithphi[0][1], np.trapz(datawithphi[:, 3], datawithphi[:, 2]), np.trapz(datawithphi[:, 4], datawithphi[:, 2])] for datawithphi in datawithlambda] for datawithlambda in data])
 
-    # Calculate and multiply with the phi factor
-    ks = 2*np.pi / lambdas
-    phiFactor = np.exp(-0.5 * (waist * np.outer(ks, np.sin(phis * np.pi / 180.)))**2) * np.sin(phis * np.pi / 180.)
+    # Calculate and multiply with the phi factor e^(-0.5*(w*r*sin(phi))^2)*sin(phi)
+    def mult_phifactor(datawithlambda):
+        k = 2 * np.pi / datawithlambda[0][0]
+        sins = np.sin(datawithlambda[:, 1])
+        datawithlambda[:, 2] *= np.exp(-0.5 * (waist * k * sins)**2) * sins
+        datawithlambda[:, 3] *= np.exp(-0.5 * (waist * k * sins)**2) * sins
+        return datawithlambda
 
-    r_sp_notheta = r_sp_notheta * phiFactor
+    data = np.array([mult_phifactor(d) for d in data])
 
-    # Do the phi integrals
-    numerator = np.sum(r_sp_notheta, axis=1) * dphi
-    denominator = np.sum(phiFactor, axis=1) * dphi
-    
-    # Calculate the Rsp
-    Rsp = numerator / np.where(denominator == 0, 1, denominator)
+    # Do the phi integrals and divide
+    def f(datawithlambda):
+        a = np.trapz(datawithlambda[:, 2], datawithlambda[:, 1])
+        b = np.trapz(datawithlambda[:, 3], datawithlambda[:, 1])
+        if b == 0 and a != 0:
+            raise AssertionError("denominator is 0 while numerator isn't")
+        return a / b if b != 0 else 0
+
+    Rsp = np.array([f(d) for d in data])
 
     return Rsp
 
 
-def main():
-    ########## Get Data ##########
+def calculateRspFromFile(filename):
 
-    filename = sys.argv[1]
-
-    # File is expected to have a single header line on the form
-    # a = 1081, r = 418, d = 90, L = 4000
-    with open() as f:
-        first_line = f.readline()
-    
+    """
+    Calculates the Rsp from a filename
+    File is expected to have a single header row detailing what the columns are
+    returns the lambdas (for plotting) and the Rsp in a tuple
+    """
 
     data = np.genfromtxt(filename, skip_header=1)
-    r_sp = data[:,2]
 
-    lambdas = np.linspace(1400e-9, 1700e-9, 31)
-    phis = np.linspace(0,10,11)
-    dphi = np.pi/180
-    dtheta = np.pi/18
-    ntheta = 10
+    # Fill this in manually
+    thetacol = 1
+    phicol = 2
+    lambdacol = 0
+    reflectedcol = 8
 
-    ########## Calculate the reflectivities ##########
+    # Calculate the reflectivities
+    Rsp = calculateRsp(4.6e-6, np.column_stack((data[:, lambdacol] * 1e-9, 
+                                                data[:, phicol] * np.pi / 180,
+                                                data[:, thetacol] * np.pi / 180,
+                                                data[:, reflectedcol])))
 
-    Rsp = calculateRsp(4.6e-6, r_sp, phis, lambdas, dphi, dtheta, ntheta)
-    
-    ########## Plot the figure ##########
 
-    plt.plot(lambdas, Rsp)
+    return np.unique(data[:, lambdacol]), Rsp
+
+def main():
+
+    #   Get Data
+
+    lambdas, Rsp = calculateRspFromFile("../data/80data100.txt")
+    lambdas2, Rsp2 = calculateRspFromFile("../data/80data110.txt")
+
+    #   Plot the figure
+
+    fig, ax = plt.subplots()
+    ax.plot(lambdas, Rsp, linewidth=2)
+    ax.plot(lambdas2, Rsp2, linewidth=2)
+
+    ax.set_xlabel("Wavelength")
+    ax.set_ylabel("Reflectivity")
+    ax.set_title("Simulated reflectivity spectrum")
+    ax.legend(["100 nm", "110 nm"])
     plt.show()
-    
+
 
 main()
-    
-
-
-

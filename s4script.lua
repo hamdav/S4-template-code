@@ -1,48 +1,101 @@
+require 'algaas_n'
+
+-- Print header row with the format of the data
+print("λ", "θ", "φ", "a", "r", "d", "L_between", "L_beneath",  "incidence_flux_vacuum", "reflection_flux_vacuum", "transmission_flux_GAAS");
+
+-- =================================
+--      Create relevant constants
+-- =================================
+
+-- a: Latice constant
 a = 1081
-r = 418
-d = 90
-L = 4000
+-- r: radius of holes
+r = 411
+-- d: thickness of membranes
+d = 110
+-- L_between: gap between membranes
+L_between = 750
+-- L_beneath: gap beneath both membranes
+L_beneath = 750
 
-print('r=' .. r .. ', a=' .. a .. ', d=' .. d .. ', L=' .. L)
+-- =================================
+--      Set up simulation object
+-- =================================
 
-for theta = 0.0, 90.0, 5.0 do
+-- Create a simulation object and set the latice constant and number of fourier coeffs.
+-- Note that the time complexity is O(n^3) in number of fourier coeffs, so optimize if you can. 
+S = S4.NewSimulation()
+S:SetLattice({a, 0.0},{0.0, a})
+S:SetNumG(50)
+
+--      Create the materials
+-- Note that the dielectric constant for GaAs/AlGaAs changes with freq
+-- so it will be set later
+S:AddMaterial("vacuum", {1.0,0.0})
+S:AddMaterial("GAAS", {1.0, 0.0})
+S:AddMaterial("AL92GAAS", {1.0, 0.0}) 
+S:AddMaterial("AL67GAAS", {1.0, 0.0}) 
+
+--      Set the stack
+S:AddLayer('Layer_Above', 0.0, 'vacuum')
+
+-- First membrane
+S:AddLayer('membrane_0', d, 'GAAS')
+S:SetLayerPatternCircle('membrane_0','vacuum', {0.000000,0.000000}, r)
+S:AddLayer('gap_0', L_between, 'vacuum')
+
+-- Second membrane
+S:AddLayerCopy('membrane_1', d, 'membrane_0')
+S:AddLayerCopy('gap_1', L_beneath, 'gap_0')
+
+-- dbr: values from simulations before
+d_gaas = 108.5
+d_algaas = 127.1
+
+S:AddLayer('gaas_0', d_gaas, 'GAAS')
+S:AddLayer('al92gaas_0', d_algaas, 'AL92GAAS')
+for i = 1, 29, 1 do
+    S:AddLayerCopy('gaas_' .. i, d_gaas, 'gaas_0')
+    S:AddLayerCopy('al92gaas_' .. i, d_algaas, 'al92gaas_0')
+end
+
+S:AddLayerCopy('quarter_wave_layer', 114.8, 'gaas_0')
+S:AddLayer('etch_stop_layer', 397, 'AL67GAAS')
+
+-- bottom
+S:AddLayer('Layer_Below', 0.000000, 'GAAS')
+        
+-- =================================
+--      Run the simulation
+-- =================================
+
+-- For many thetas and phis, simulate a plane wave. 
+-- These will later be reconstructed to a gaussian beam
+for theta = 0.0, 90.0, 2.5 do
     for phi = 0.0, 10.0, 1.0 do
     
-        S = S4.NewSimulation()
-        S:SetLattice({a,0.000000},{0.000000,a})
-        S:SetNumG(50)
-        
-        S:AddMaterial("vacuum", {1.000000,0.000000})
-        S:AddMaterial("GAAS", {11.38482,0.000000})
-        
-        S:AddLayer('Layer_Above', 0.000000, 'vacuum')
-
-        S:AddLayer('layer_1', d, 'GAAS')
-        S:SetLayerPatternCircle('layer_1','vacuum', {0.000000,0.000000}, r)
-    
-        S:AddLayer('layer_2', L, 'vacuum')
-    	S:AddLayer('Layer_Below', 0.000000, 'GAAS')
-        
+        -- Set the excitation to a plain wave. 
+        -- The polarization is rotated so that all plainwaves are polarized in the same direction
         S:SetExcitationPlanewave({phi,theta},{math.cos(math.rad(theta))/math.cos(math.rad(phi))
             , 0.000000},{-math.sin(math.rad(theta)),0.000000})
-        
-        real_eps_1 = 1.0
-        imag_eps_1 = 0.0
-        
-        real_eps_2 = 11.38482
-        imag_eps_2 = 0.0
 
-        for i = 1400 , 1700, 1 do
-        	freq = 1.0/i;
-        	S:SetFrequency(freq)
-        	S:SetMaterial('vacuum', {real_eps_1, imag_eps_1});
-        	S:SetMaterial('GAAS', {real_eps_2, imag_eps_2});
+        for wavelength = 1400 , 1700, 1 do
+
+            -- Set the system frequency
+        	S:SetFrequency(1/wavelength)
+
+            -- Dielectric constant of GaAs changes with frequency, so it needs to be set at each step. 
+        	S:SetMaterial('GAAS', {algaas_n(0, 293, wavelength)^2, 0})
+
+            -- Calculate the results. 
         	incidence_flux, reflection_flux_vacuum = S:GetPoyntingFlux('Layer_Above', 0.000000)
         	reflection_flux_vacuum = (-1) * reflection_flux_vacuum / incidence_flux;
         	transmission_flux = S:GetPoyntingFlux('Layer_Below', 0.000000)
         	transmission_flux_GAAS = transmission_flux / incidence_flux;
         	incidence_flux_vacuum = incidence_flux / incidence_flux;
-        	print(freq .. '\t' .. incidence_flux_vacuum .. '\t' .. reflection_flux_vacuum .. '\t' .. transmission_flux_GAAS);
+
+            -- print the results
+        	print(wavelength, theta, phi, a, r, d, L_between, L_beneath,  incidence_flux_vacuum, reflection_flux_vacuum, transmission_flux_GAAS);
         end
     end
 end
