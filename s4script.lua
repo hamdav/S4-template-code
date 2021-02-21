@@ -47,7 +47,7 @@ d_algaas = 127.1
 
 S:AddLayer('gaas_0', d_gaas, 'GAAS')
 S:AddLayer('al92gaas_0', d_algaas, 'AL92GAAS')
-for i = 1, 29, 1 do
+for i = 1, 2, 1 do
     S:AddLayerCopy('gaas_' .. i, d_gaas, 'gaas_0')
     S:AddLayerCopy('al92gaas_' .. i, d_algaas, 'al92gaas_0')
 end
@@ -64,8 +64,8 @@ S:AddLayer('Layer_Below', 0.000000, 'GAAS')
 
 -- For many thetas and phis, simulate a plane wave. 
 -- These will later be reconstructed to a gaussian beam
-for theta = 0.0, 45.0, 5 do
-    for phi = 0.0, 10.0, 2.0 do
+for theta = 0.0, 45.0, 9 do
+    for phi = 0.0, 10.0, 5.0 do
     
         -- Set the excitation to a plain wave. 
         -- The polarization is rotated so that all plainwaves are polarized in the same direction

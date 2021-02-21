@@ -3,9 +3,9 @@
 # Bunch of tetralith-commands
 
 # Set number of cores to be used and which wavelengths are to be simulated
-numberOfCores=3;
-minWavelength=1450
-maxWavelength=1700
+numberOfCores=2;
+minWavelength=1500
+maxWavelength=1501
 
 # Calculate how many wavelengths each core should simulate
 noPerCore=$(( (maxWavelength - minWavelength + 1)/numberOfCores ))
@@ -14,7 +14,7 @@ rest=$(( (maxWavelength - minWavelength + 1)%numberOfCores ))
 # Each core should simulate wavelengths from $first to $last inclusive
 first=$minWavelength
 
-for core in {1..$numberOfCores} 
+for core in `seq $numberOfCores`
 do
     echo $core
     if [ $core -le $rest ]
@@ -24,7 +24,9 @@ do
         last=$((first + noPerCore - 1))
     fi
     tmpFilename="tmp_$core.txt"
-    S4 <(sed '1i wavelength_start=$first\nwavelength_end=$last' s4script.lua) > $tmpFilename &
+    nohup /home/x_daham/builds/S4/build/S4 <(sed "1i wavelength_start=$first\nwavelength_end=$last" s4script.lua) > $tmpFilename
+    P1=$!
+    echo $P1
     first=$((last + 1))
 done
 
