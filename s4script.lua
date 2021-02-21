@@ -64,8 +64,8 @@ S:AddLayer('Layer_Below', 0.000000, 'GAAS')
 
 -- For many thetas and phis, simulate a plane wave. 
 -- These will later be reconstructed to a gaussian beam
-for theta = 0.0, 45.0, 2.5 do
-    for phi = 0.0, 10.0, 1.0 do
+for theta = 0.0, 45.0, 5 do
+    for phi = 0.0, 10.0, 2.0 do
     
         -- Set the excitation to a plain wave. 
         -- The polarization is rotated so that all plainwaves are polarized in the same direction
