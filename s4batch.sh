@@ -30,4 +30,4 @@ done
 
 wait
 
-cat tmp_*.txt > data.txt
+cat <(echo "λ, θ, φ, a, r, d, L, incidence_flux_vacuum, reflection_flux_vacuum, transmission_flux_GAAS") tmp_*.txt > data.txt

@@ -1,8 +1,5 @@
 require 'algaas_n'
 
--- Print header row with the format of the data
-print("λ", "θ", "φ", "a", "r", "d", "L_between", "L_beneath",  "incidence_flux_vacuum", "reflection_flux_vacuum", "transmission_flux_GAAS");
-
 -- =================================
 --      Create relevant constants
 -- =================================
@@ -11,12 +8,10 @@ print("λ", "θ", "φ", "a", "r", "d", "L_between", "L_beneath",  "incidence_flu
 a = 1081
 -- r: radius of holes
 r = 411
--- d: thickness of membranes
+-- d: thickness of membrane
 d = 110
--- L_between: gap between membranes
-L_between = 750
--- L_beneath: gap beneath both membranes
-L_beneath = 750
+-- L: gap beneath membrane
+L = 750
 
 -- =================================
 --      Set up simulation object
@@ -42,11 +37,9 @@ S:AddLayer('Layer_Above', 0.0, 'vacuum')
 -- First membrane
 S:AddLayer('membrane_0', d, 'GAAS')
 S:SetLayerPatternCircle('membrane_0','vacuum', {0.000000,0.000000}, r)
-S:AddLayer('gap_0', L_between, 'vacuum')
 
--- Second membrane
-S:AddLayerCopy('membrane_1', d, 'membrane_0')
-S:AddLayerCopy('gap_1', L_beneath, 'gap_0')
+-- Gap
+S:AddLayer('gap_0', L, 'vacuum')
 
 -- dbr: values from simulations before
 d_gaas = 108.5
@@ -71,7 +64,7 @@ S:AddLayer('Layer_Below', 0.000000, 'GAAS')
 
 -- For many thetas and phis, simulate a plane wave. 
 -- These will later be reconstructed to a gaussian beam
-for theta = 0.0, 90.0, 2.5 do
+for theta = 0.0, 45.0, 2.5 do
     for phi = 0.0, 10.0, 1.0 do
     
         -- Set the excitation to a plain wave. 
@@ -79,7 +72,7 @@ for theta = 0.0, 90.0, 2.5 do
         S:SetExcitationPlanewave({phi,theta},{math.cos(math.rad(theta))/math.cos(math.rad(phi))
             , 0.000000},{-math.sin(math.rad(theta)),0.000000})
 
-        for wavelength = 1400 , 1700, 1 do
+        for wavelength = wavelength_start, wavelength_end, 1 do
 
             -- Set the system frequency
         	S:SetFrequency(1/wavelength)
@@ -95,7 +88,7 @@ for theta = 0.0, 90.0, 2.5 do
         	incidence_flux_vacuum = incidence_flux / incidence_flux;
 
             -- print the results
-        	print(wavelength, theta, phi, a, r, d, L_between, L_beneath,  incidence_flux_vacuum, reflection_flux_vacuum, transmission_flux_GAAS);
+        	print(wavelength, theta, phi, a, r, d, L, incidence_flux_vacuum, reflection_flux_vacuum, transmission_flux_GAAS);
         end
     end
 end
