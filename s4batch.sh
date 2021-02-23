@@ -28,7 +28,7 @@ do
     sed "1i wavelength_start=$first\nwavelength_end=$last" s4script.lua > $tmpscriptfile
 
     tmpFilename="tmp_${core}.txt"
-    /home/x_daham/builds/S4/build/S4 $tmpscriptfile > $tmpFilename
+    nohup /~/apps/S4/build/S4 <(sed "1i wavelength_start=$first\nwavelength_end=$last" s4script.lua) > $tmpFilename
 
     first=$((last + 1))
 done
