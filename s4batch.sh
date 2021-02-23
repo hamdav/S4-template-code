@@ -23,10 +23,13 @@ do
     else
         last=$((first + noPerCore - 1))
     fi
-    tmpFilename="tmp_$core.txt"
-    nohup /home/x_daham/builds/S4/build/S4 <(sed "1i wavelength_start=$first\nwavelength_end=$last" s4script.lua) > $tmpFilename
-    P1=$!
-    echo $P1
+
+    tmpscriptfile="tmpscript_${core}.lua"
+    sed "1i wavelength_start=$first\nwavelength_end=$last" s4script.lua > $tmpscriptfile
+
+    tmpFilename="tmp_${core}.txt"
+    /home/x_daham/builds/S4/build/S4 $tmpscriptfile > $tmpFilename
+
     first=$((last + 1))
 done
 

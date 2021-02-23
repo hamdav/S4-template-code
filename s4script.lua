@@ -47,7 +47,7 @@ d_algaas = 127.1
 
 S:AddLayer('gaas_0', d_gaas, 'GAAS')
 S:AddLayer('al92gaas_0', d_algaas, 'AL92GAAS')
-for i = 1, 2, 1 do
+for i = 1, 29, 1 do
     S:AddLayerCopy('gaas_' .. i, d_gaas, 'gaas_0')
     S:AddLayerCopy('al92gaas_' .. i, d_algaas, 'al92gaas_0')
 end
