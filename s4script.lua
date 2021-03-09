@@ -9,7 +9,7 @@ a = 1081
 -- r: radius of holes
 r = 411
 -- d: thickness of membrane
-d = 110
+d = 100
 -- L: gap beneath membrane
 L = 750
 
@@ -64,8 +64,8 @@ S:AddLayer('Layer_Below', 0.000000, 'GAAS')
 
 -- For many thetas and phis, simulate a plane wave. 
 -- These will later be reconstructed to a gaussian beam
-for theta = 0.0, 45.0, 9 do
-    for phi = 0.0, 10.0, 5.0 do
+for theta = 0.0, 45.0, 2.5 do
+    for phi = 0.0, 10.0, 0.1 do
     
         -- Set the excitation to a plain wave. 
         -- The polarization is rotated so that all plainwaves are polarized in the same direction
@@ -74,21 +74,19 @@ for theta = 0.0, 45.0, 9 do
 
         for wavelength = wavelength_start, wavelength_end, 1 do
 
-            -- Set the system frequency
+            	-- Set the system frequency
         	S:SetFrequency(1/wavelength)
 
-            -- Dielectric constant of GaAs changes with frequency, so it needs to be set at each step. 
+            	-- Dielectric constant of GaAs changes with frequency, so it needs to be set at each step. 
         	S:SetMaterial('GAAS', {algaas_n(0, 293, wavelength)^2, 0})
 
-            -- Calculate the results. 
+            	-- Calculate the results. 
         	incidence_flux, reflection_flux_vacuum = S:GetPoyntingFlux('Layer_Above', 0.000000)
         	reflection_flux_vacuum = (-1) * reflection_flux_vacuum / incidence_flux;
-        	transmission_flux = S:GetPoyntingFlux('Layer_Below', 0.000000)
-        	transmission_flux_GAAS = transmission_flux / incidence_flux;
-        	incidence_flux_vacuum = incidence_flux / incidence_flux;
+        	incidence_flux, transmission_flux = S:GetPoyntingFlux('Layer_Below', 0.000000)
 
-            -- print the results
-        	print(wavelength, theta, phi, a, r, d, L, incidence_flux_vacuum, reflection_flux_vacuum, transmission_flux_GAAS);
+    		-- print the results
+        	print(wavelength, theta, phi, a, r, d, L, reflection_flux_vacuum, transmission_flux);
         end
     end
 end
