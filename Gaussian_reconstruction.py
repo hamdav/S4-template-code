@@ -1,11 +1,7 @@
-import sys
-
 import numpy as np
 import matplotlib.pyplot as plt
 
 plt.style.use("seaborn-darkgrid")
-
-# Invoke script like "python3 Gaussian_reconstruction.py data.txt"
 
 
 def calculateRsp(waist, data):
@@ -35,12 +31,19 @@ def calculateRsp(waist, data):
     # datawithphix = [[lambda, phi, theta, r, 1],
     #                  [lambda, phi, theta, r, 1],... ]
     data = np.split(data, np.unique(data[:, 0], return_index=True)[1][1:])
-    data = np.array([np.split(datawithlambda, np.unique(datawithlambda[:, 1], return_index=True)[1][1:]) for datawithlambda in data])
+    data = [np.split(datawithlambda,
+                     np.unique(datawithlambda[:, 1], return_index=True)[1][1:])
+            for datawithlambda in data]
 
     # Do the theta integral:
     # data is then [datawithlambda1, datawithlambda2, ...]
     # datawithlambdax = [[lambda, phi, r, 1], [lambda, phi, r, 1],... ]
-    data = np.array([[[datawithphi[0][0], datawithphi[0][1], np.trapz(datawithphi[:, 3], datawithphi[:, 2]), np.trapz(datawithphi[:, 4], datawithphi[:, 2])] for datawithphi in datawithlambda] for datawithlambda in data])
+    data = [np.array([[datawithphi[0][0],
+                       datawithphi[0][1],
+                       np.trapz(datawithphi[:, 3], datawithphi[:, 2]),
+                       np.trapz(datawithphi[:, 4], datawithphi[:, 2])]
+                      for datawithphi in datawithlambda])
+            for datawithlambda in data]
 
     # Calculate and multiply with the phi factor e^(-0.5*(w*r*sin(phi))^2)*sin(phi)
     def mult_phifactor(datawithlambda):
@@ -50,7 +53,7 @@ def calculateRsp(waist, data):
         datawithlambda[:, 3] *= np.exp(-0.5 * (waist * k * sins)**2) * sins
         return datawithlambda
 
-    data = np.array([mult_phifactor(d) for d in data])
+    data = [mult_phifactor(d) for d in data]
 
     # Do the phi integrals and divide
     def f(datawithlambda):
@@ -60,12 +63,16 @@ def calculateRsp(waist, data):
             raise AssertionError("denominator is 0 while numerator isn't")
         return a / b if b != 0 else 0
 
-    Rsp = np.array([f(d) for d in data])
+    Rsp = [f(d) for d in data]
 
     return Rsp
 
 
-def calculateRspFromFile(filename):
+def calculateRspFromFile(filename,
+                         thetacol=1,
+                         phicol=2,
+                         lambdacol=0,
+                         reflectedcol=7):
 
     """
     Calculates the Rsp from a filename
@@ -75,14 +82,9 @@ def calculateRspFromFile(filename):
 
     data = np.genfromtxt(filename, skip_header=1)
 
-    # Fill this in manually
-    thetacol = 1
-    phicol = 2
-    lambdacol = 0
-    reflectedcol = 8
 
     # Calculate the reflectivities
-    Rsp = calculateRsp(4.6e-6, np.column_stack((data[:, lambdacol] * 1e-9, 
+    Rsp = calculateRsp(4.6e-6, np.column_stack((data[:, lambdacol] * 1e-9,
                                                 data[:, phicol] * np.pi / 180,
                                                 data[:, thetacol] * np.pi / 180,
                                                 data[:, reflectedcol])))
@@ -94,19 +96,28 @@ def main():
 
     #   Get Data
 
-    lambdas, Rsp = calculateRspFromFile("../data/80data100.txt")
-    lambdas2, Rsp2 = calculateRspFromFile("../data/80data110.txt")
+    datadir = "../data/"
+    filenames = [datadir + "SL-DBR-740-0.1.txt",
+                 datadir + "SL-DBR-750-0.1.txt",
+                 datadir + "SL-DBR-760-0.1.txt"]
+    legend = [r"$L = 740$ nm",
+              r"$L = 750$ nm",
+              r"$L = 760$ nm"]
+
+    data = [calculateRspFromFile(filename, reflectedcol=7) for filename in filenames]
+    #data.append(calculateRspFromFile(filenames[-1], reflectedcol=7))
 
     #   Plot the figure
 
     fig, ax = plt.subplots()
-    ax.plot(lambdas, Rsp, linewidth=2)
-    ax.plot(lambdas2, Rsp2, linewidth=2)
+
+    for lambdas, Rsp in data:
+        ax.plot(lambdas, Rsp, linewidth=1)
 
     ax.set_xlabel("Wavelength")
     ax.set_ylabel("Reflectivity")
-    ax.set_title("Simulated reflectivity spectrum")
-    ax.legend(["100 nm", "110 nm"])
+    ax.set_title("Simulated reflectivity spectrum\nGap")
+    ax.legend(legend)
     plt.show()
 
 
