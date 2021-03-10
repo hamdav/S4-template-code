@@ -86,7 +86,7 @@ for theta = 0.0, 45.0, 2.5 do
         	incidence_flux, transmission_flux = S:GetPoyntingFlux('Layer_Below', 0.000000)
 
     		-- print the results
-        	print(wavelength, theta, phi, a, r, d, L, reflection_flux_vacuum, transmission_flux);
+        	print(wavelength, theta, phi, reflection_flux_vacuum, transmission_flux);
         end
     end
 end

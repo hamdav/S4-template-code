@@ -72,7 +72,8 @@ def calculateRspFromFile(filename,
                          thetacol=1,
                          phicol=2,
                          lambdacol=0,
-                         reflectedcol=7):
+                         reflectedcol=7,
+                         skip_header=0):
 
     """
     Calculates the Rsp from a filename
@@ -80,7 +81,7 @@ def calculateRspFromFile(filename,
     returns the lambdas (for plotting) and the Rsp in a tuple
     """
 
-    data = np.genfromtxt(filename, skip_header=1)
+    data = np.genfromtxt(filename, skip_header=skip_header)
 
 
     # Calculate the reflectivities
@@ -97,22 +98,19 @@ def main():
     #   Get Data
 
     datadir = "../data/"
-    filenames = [datadir + "SL-DBR-740-0.1.txt",
-                 datadir + "SL-DBR-750-0.1.txt",
-                 datadir + "SL-DBR-760-0.1.txt"]
-    legend = [r"$L = 740$ nm",
-              r"$L = 750$ nm",
-              r"$L = 760$ nm"]
+    filenames = [datadir + "SL-vac-100-411.txt",
+                 datadir + "DL-vac-base.txt"]
+    legend = ["SL", "DL"]
 
-    data = [calculateRspFromFile(filename, reflectedcol=7) for filename in filenames]
-    #data.append(calculateRspFromFile(filenames[-1], reflectedcol=7))
+    data = [calculateRspFromFile(filenames[0], reflectedcol=9),
+            calculateRspFromFile(filenames[1], reflectedcol=3)]
 
     #   Plot the figure
 
     fig, ax = plt.subplots()
 
     for lambdas, Rsp in data:
-        ax.plot(lambdas, Rsp, linewidth=1)
+        ax.plot(lambdas, Rsp, linewidth=2)
 
     ax.set_xlabel("Wavelength")
     ax.set_ylabel("Reflectivity")
@@ -121,4 +119,5 @@ def main():
     plt.show()
 
 
-main()
+if __name__ == "__main__":
+    main()
